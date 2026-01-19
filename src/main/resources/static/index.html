@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Controle de Notas Fiscais</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --azul-principal: #0018a3;
+      --verde-claro: #e8f5e9;
+      --azul-acao: #1565c0;
+      --cinza-fundo: #f4f6f8;
+      --cinza-texto: #333;
+
+      --status-aguardando: #f9a825;
+      --status-posse: #0288d1;
+      --status-erro: #c62828;
+      --status-conferida: #2e7d32;
+      --status-contabilidade: #6a1b9a;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--cinza-fundo);
+      padding: 20px;
+      color: var(--cinza-texto);
+    }
+
+    h1 { text-align: center; color: var(--azul-principal); }
+
+    form, .filtros, .historico {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 900px;
+      margin: 0 auto 20px auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+
+    label { display: block; margin-top: 10px; font-weight: bold; }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      margin-top: 18px;
+      padding: 12px;
+      width: 100%;
+      background: var(--azul-principal);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    th {
+      background: var(--azul-principal);
+      color: #fff;
+      padding: 10px;
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    tr:nth-child(even) { background: var(--verde-claro); }
+
+    .acoes button {
+      width: auto;
+      padding: 6px 10px;
+      margin: 2px;
+      background: var(--azul-acao);
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .status {
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .status-aguardando { background: var(--status-aguardando); }
+    .status-posse { background: var(--status-posse); }
+    .status-erro { background: var(--status-erro); }
+    .status-conferida { background: var(--status-conferida); }
+    .status-contabilidade { background: var(--status-contabilidade); }
+
+    .log {
+      font-size: 13px;
+      border-left: 4px solid var(--azul-principal);
+      background: var(--verde-claro);
+      padding: 8px;
+      margin-bottom: 6px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Controle de Notas Fiscais</h1>
+
+<div class="filtros">
+  <label>Filtrar por status</label>
+  <select id="filtroStatus">
+    <option value="">Todos</option>
+    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Em posse da secretaria">Em posse da secretaria</option>
+    <option value="Retornou com erro">Retornou com erro</option>
+    <option value="Conferida">Conferida</option>
+    <option value="Enviada para tesouraria">Enviada para tesouraria</option>
+  </select>
+
+  <label>Pesquisar por número da NF</label>
+  <input type="text" id="buscaNF" placeholder="Digite o número da NF" />
+</div>
+
+<form id="formNF">
+  <input type="hidden" id="indiceEdicao" />
+
+  <label>Número da NF</label>
+  <input type="text" id="numeroNF" required />
+
+  <label>Responsável do Setor (quem envia)</label>
+  <input type="text" id="responsavelSetor" required />
+
+  <label>Secretaria de Destino</label>
+  <input type="text" id="secretaria" required />
+
+  <label>Responsável na Secretaria (quem recebe)</label>
+  <input type="text" id="responsavelSecretaria" required />
+
+  <label>Valor da NF (opcional)</label>
+  <input type="number" id="valor" step="0.01" />
+
+  <label>Número da NAF Global (opcional)</label>
+  <input type="text" id="nafGlobal" />
+
+  <label>Status</label>
+  <select id="statusNF">
+    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Em posse da secretaria">Em posse da secretaria</option>
+    <option value="Retornou com erro">Retornou com erro</option>
+    <option value="Conferida">Conferida</option>
+    <option value="Enviada para tesouraria">Enviada para tesouraria</option>
+  </select>
+
+  <label>Observações</label>
+  <textarea id="observacoes"></textarea>
+
+  <button type="submit">Salvar Nota</button>
+</form>
+
+<table>
+  <thead>
+    <tr>
+      <th>NF</th>
+      <th>Data</th>
+      <th>Resp. Setor</th>
+      <th>Secretaria</th>
+      <th>Resp. Secretaria</th>
+      <th>Valor</th>
+      <th>NAF Global</th>
+      <th>Status</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody id="listaNotas"></tbody>
+</table>
+
+<div class="historico">
+  <h2>Histórico da Nota</h2>
+  <div id="historicoLogs">Selecione uma nota para ver o histórico.</div>
+</div>
+
+<script>
+const form = document.getElementById('formNF');
+  const listaNotas = document.getElementById('listaNotas');
+  const indiceEdicao = document.getElementById('indiceEdicao'); 
+  const historicoLogs = document.getElementById('historicoLogs');
+  const filtroStatus = document.getElementById('filtroStatus');
+  const buscaNF = document.getElementById('buscaNF');
+
+  
+  const numeroNF = document.getElementById('numeroNF');
+  const responsavelSetor = document.getElementById('responsavelSetor');
+  const secretaria = document.getElementById('secretaria');
+  const responsavelSecretaria = document.getElementById('responsavelSecretaria');
+  const valor = document.getElementById('valor');
+  const nafGlobal = document.getElementById('nafGlobal'); 
+  const statusNF = document.getElementById('statusNF');
+  const observacoes = document.getElementById('observacoes');
+
+const API_URL = '/notas';
+  let notasCache = []; 
+
+  
+
+  async function carregarNotas() {
+    try {
+      const response = await fetch(API_URL);
+      notasCache = await response.json();
+      renderizarNotas();
+    } catch (error) {
+      console.error("Erro ao buscar notas:", error);
+      listaNotas.innerHTML = '<tr><td colspan="9">Erro ao conectar com o servidor. Verifique se o Java está rodando.</td></tr>';
+    }
+  }
+
+  async function salvarNoBanco(nota, id = null) {
+    const metodo = id ? 'PUT' : 'POST';
+    const url = id ? `${API_URL}/${id}` : API_URL;
+
+    await fetch(url, {
+      method: metodo,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nota)
+    });
+
+    carregarNotas(); 
+  }
+
+  async function excluirDoBanco(id) {
+    if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
+    
+    await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+    carregarNotas();
+  }
+
+
+
+function renderizarNotas() {
+  listaNotas.innerHTML = '';
+  const statusSelecionado = filtroStatus.value;
+  const textoBusca = buscaNF.value.toLowerCase();
+
+  notasCache
+          .filter(nota =>
+                  (!statusSelecionado || nota.status === statusSelecionado) &&
+                  (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca))
+          )
+          .forEach(nota => {
+            const tr = document.createElement('tr');
+
+            // --- PARTE NOVA: Transforma a linha em botão ---
+            tr.style.cursor = 'pointer'; // Faz o mouse virar mãozinha
+            tr.title = "Clique para ver o histórico e observações"; // Dica ao passar o mouse
+            tr.onclick = () => exibirHistorico(nota); // Chama a função que criamos
+            // -----------------------------------------------
+
+            tr.innerHTML = `
+          <td>${nota.numeroNF}</td>
+          <td>${new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR')}</td>
+          <td>${nota.responsavelSetor || '-'}</td>
+          <td>${nota.secretaria || '-'}</td>
+          <td>${nota.responsavelSecretaria || '-'}</td>
+          <td>${nota.valor ? parseFloat(nota.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
+          <td>${nota.nafGlobal || '-'}</td>
+          <td>
+            <span class="status ${getClassStatus(nota.status)}">${nota.status || 'Pendente'}</span>
+          </td>
+          <td class="acoes">
+            <button onclick="event.stopPropagation(); prepararEdicao(${nota.id})">Editar</button>
+            <button onclick="event.stopPropagation(); excluirDoBanco(${nota.id})" style="background:#c62828;">Excluir</button>
+          </td>
+        `;
+            listaNotas.appendChild(tr);
+          });
+}
+
+  function getClassStatus(status) {
+    if (status === 'Aguardando NAF parcial') return 'status-aguardando';
+    if (status === 'Em posse da secretaria') return 'status-posse';
+    if (status === 'Retornou com erro') return 'status-erro';
+    if (status === 'Conferida') return 'status-conferida';
+    if (status === 'Enviada para tesouraria') return 'status-contabilidade';
+
+    return 'status-contabilidade';
+  }
+
+  function prepararEdicao(id) {
+    const nota = notasCache.find(n => n.id === id);
+    if (!nota) return;
+
+    numeroNF.value = nota.numeroNF;
+    responsavelSetor.value = nota.responsavelSetor;
+    secretaria.value = nota.secretaria;
+    responsavelSecretaria.value = nota.responsavelSecretaria;
+    valor.value = nota.valor; 
+    nafGlobal.value = nota.nafGlobal || ''; 
+    statusNF.value = nota.status;
+    observacoes.value = nota.observacoes;
+    
+    indiceEdicao.value = id; 
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+
+form.addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+
+  const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
+
+  if (!usuario) {
+    alert("É obrigatório informar o nome para registrar no histórico!");
+    return;
+  }
+
+
+  const dataHora = new Date().toLocaleString('pt-BR');
+  const novaLinhaLog = `<p style="margin: 5px 0; border-bottom: 1px dashed #eee;">
+        <strong>[${dataHora}]</strong> 👤 <b>${usuario.toUpperCase()}</b>: <br>
+        Definiu status como: <em>${statusNF.value}</em> <br>
+        Obs: ${observacoes.value || 'Sem obs'}
+    </p>`;
+
+
+  const idEdicao = indiceEdicao.value;
+  let historicoAntigo = "";
+
+  if (idEdicao) {
+
+    const notaOriginal = notasCache.find(n => n.id == idEdicao);
+    if (notaOriginal && notaOriginal.historicoLog) {
+      historicoAntigo = notaOriginal.historicoLog;
+    }
+  }
+
+
+  const nota = {
+    numeroNF: numeroNF.value,
+    responsavelSetor: responsavelSetor.value,
+    secretaria: secretaria.value,
+    responsavelSecretaria: responsavelSecretaria.value,
+    valor: valor.value,
+    nafGlobal: nafGlobal.value,
+    status: statusNF.value,
+    observacoes: observacoes.value,
+
+    historicoLog: novaLinhaLog + historicoAntigo
+  };
+
+  await salvarNoBanco(nota, idEdicao || null);
+
+  form.reset();
+  indiceEdicao.value = '';
+});
+
+  filtroStatus.addEventListener('change', renderizarNotas);
+  buscaNF.addEventListener('input', renderizarNotas);
+
+
+  carregarNotas();
+
+
+function exibirHistorico(nota) {
+
+  const logCompleto = nota.historicoLog ? nota.historicoLog : '<p style="color: #666; font-style: italic;">Nenhum registro de alteração detalhado ainda.</p>';
+
+
+  const dataCadastro = new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR');
+
+  historicoLogs.innerHTML = `
+      <div class="log">
+        <div style="font-size: 1.1em; margin-bottom: 5px; color: #0018a3;">
+            <strong>Nota Fiscal nº ${nota.numeroNF}</strong>
+        </div>
+
+        <div style="margin-bottom: 10px; font-size: 0.9em; color: #555;">
+            <strong>Criada em:</strong> ${dataCadastro} &nbsp;|&nbsp;
+            <strong>Status Atual:</strong> <span class="status ${getClassStatus(nota.status)}">${nota.status}</span>
+        </div>
+
+        <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ccc;">
+
+        <strong>📜 Linha do Tempo (Quem fez o quê):</strong> <br>
+        <div style="background: #fdfdfd; padding: 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd; max-height: 250px; overflow-y: auto;">
+            ${logCompleto}
+        </div>
+      </div>
+    `;
+
+
+  historicoLogs.scrollIntoView({ behavior: 'smooth' });
+}
+</script>
+
+</body>
+</html>
