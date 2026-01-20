@@ -156,7 +156,7 @@
   <input type="text" id="secretaria" required />
 
   <label>Responsável na Secretaria (quem recebe)</label>
-  <input type="text" id="responsavelSecretaria" required />
+  <input type="text" id="responsavelSecretaria" placeholder="Preencher somente na entrega" />
 
   <label>Valor da NF (opcional)</label>
   <input type="number" id="valor" step="0.01" />
@@ -328,10 +328,16 @@
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // --- Eventos ---
-
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
+
+    // 1. REGRA DE VALIDAÇÃO INTELIGENTE 🧠
+    // Se o status for "Em posse da secretaria", OBRIGA a ter o nome de quem recebeu.
+    if (statusNF.value === "Em posse da secretaria" && !responsavelSecretaria.value.trim()) {
+      alert("⚠️ ATENÇÃO:\n\nPara definir o status como 'Em posse da secretaria', você precisa informar o nome do Responsável que recebeu a nota!");
+      responsavelSecretaria.focus(); // Joga o cursor lá no campo pra facilitar
+      return; // Para tudo e não salva
+    }
 
     const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
     if (!usuario) {
@@ -340,7 +346,6 @@
     }
 
     const dataHora = new Date().toLocaleString('pt-BR');
-    // Cria o log registrando o STATUS e a OBS daquele momento
     const novaLinhaLog = `<p style="margin: 5px 0; border-bottom: 1px dashed #eee;">
         <strong>[${dataHora}]</strong> 👤 <b>${usuario.toUpperCase()}</b>: <br>
         Status: <strong>${statusNF.value}</strong> <br>
@@ -362,22 +367,20 @@
       dataChegada: dataChegada.value,
       responsavelSetor: responsavelSetor.value,
       secretaria: secretaria.value,
-      responsavelSecretaria: responsavelSecretaria.value,
+      responsavelSecretaria: responsavelSecretaria.value, // Agora pode ir vazio no começo
       valor: valor.value,
       nafGlobal: nafGlobal.value,
       status: statusNF.value,
-      observacoes: observacoes.value, // Salva a obs atual na capa
-      historicoLog: novaLinhaLog + historicoAntigo // Acumula no histórico eterno
+      observacoes: observacoes.value,
+      historicoLog: novaLinhaLog + historicoAntigo
     };
 
     await salvarNoBanco(nota, idEdicao || null);
 
     form.reset();
     indiceEdicao.value = '';
-    // Reseta o select para o padrão
     statusNF.value = "Recebida pelo TI";
   });
-
   filtroStatus.addEventListener('change', renderizarNotas);
   buscaNF.addEventListener('input', renderizarNotas);
 
