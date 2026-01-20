@@ -15,19 +15,21 @@ public class ControleNotasApplication {
     @Bean
     public CommandLineRunner demo(NotaFiscalRepository repository) {
         return (args) -> {
-            // Criando uma nota de teste COMPLETA
-            NotaFiscal nota = new NotaFiscal();
+           //O código abaixo está desligado agora
+          /*NotaFiscal nota = new NotaFiscal();
             nota.setNumeroNF("12345");
-            nota.setObservacoes("Teste de inserção automática");
+            nota.setObservacoes("Teste de inser&ccedil;&atilde;o autom&aacute;tica");
 
-            // --- AQUI ESTÁ A CORREÇÃO: Preenchendo os campos obrigatórios ---
+
             nota.setResponsavelSecretaria("Maria da Silva");
-            nota.setSecretaria("Educação");
-            nota.setResponsavelSetor("João");
+            nota.setSecretaria("Educa&ccedil;&atilde;o");
+            nota.setResponsavelSetor("Jo&atilde;o");
             nota.setStatus("Pendente");
 
             repository.save(nota);
-            System.out.println("✅ Nota de teste inserida com sucesso!");
+            System.out.println("&#x2705; Nota de teste inserida com sucesso!");
+             */
+
         };
     }
 }

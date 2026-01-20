@@ -12,6 +12,8 @@
       --cinza-fundo: #f4f6f8;
       --cinza-texto: #333;
 
+      /* Cores dos Status */
+      --status-recebida: #009688; /* Verde-azulado (Teal) para nota nova */
       --status-aguardando: #f9a825;
       --status-posse: #0288d1;
       --status-erro: #c62828;
@@ -71,6 +73,7 @@
       background: var(--azul-principal);
       color: #fff;
       padding: 10px;
+      font-size: 14px;
     }
 
     td {
@@ -100,6 +103,8 @@
       display: inline-block;
     }
 
+    /* Classes CSS para cada status */
+    .status-recebida { background: var(--status-recebida); }
     .status-aguardando { background: var(--status-aguardando); }
     .status-posse { background: var(--status-posse); }
     .status-erro { background: var(--status-erro); }
@@ -118,13 +123,13 @@
 </head>
 <body>
 
-<h1>Controle de Notas Fiscais</h1>
+<h1>Controle de Notas Fiscais - TI</h1>
 
 <div class="filtros">
   <label>Filtrar por status</label>
   <select id="filtroStatus">
     <option value="">Todos</option>
-    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option> <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
     <option value="Em posse da secretaria">Em posse da secretaria</option>
     <option value="Retornou com erro">Retornou com erro</option>
     <option value="Conferida">Conferida</option>
@@ -140,6 +145,9 @@
 
   <label>Número da NF</label>
   <input type="text" id="numeroNF" required />
+
+  <label style="color: var(--azul-principal);">📅 Data de Chegada (TI)</label>
+  <input type="date" id="dataChegada" required />
 
   <label>Responsável do Setor (quem envia)</label>
   <input type="text" id="responsavelSetor" required />
@@ -158,7 +166,7 @@
 
   <label>Status</label>
   <select id="statusNF">
-    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option> <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
     <option value="Em posse da secretaria">Em posse da secretaria</option>
     <option value="Retornou com erro">Retornou com erro</option>
     <option value="Conferida">Conferida</option>
@@ -173,17 +181,17 @@
 
 <table>
   <thead>
-    <tr>
-      <th>NF</th>
-      <th>Data</th>
-      <th>Resp. Setor</th>
-      <th>Secretaria</th>
-      <th>Resp. Secretaria</th>
-      <th>Valor</th>
-      <th>NAF Global</th>
-      <th>Status</th>
-      <th>Ações</th>
-    </tr>
+  <tr>
+    <th>NF</th>
+    <th>Chegada TI</th>
+    <th>Resp. Setor</th>
+    <th>Secretaria</th>
+    <th>Resp. Secretaria</th>
+    <th>Valor</th>
+    <th>NAF Global</th>
+    <th>Status</th>
+    <th>Ações</th>
+  </tr>
   </thead>
   <tbody id="listaNotas"></tbody>
 </table>
@@ -194,27 +202,29 @@
 </div>
 
 <script>
-const form = document.getElementById('formNF');
+  // --- Configurações Básicas ---
+  const form = document.getElementById('formNF');
   const listaNotas = document.getElementById('listaNotas');
-  const indiceEdicao = document.getElementById('indiceEdicao'); 
+  const indiceEdicao = document.getElementById('indiceEdicao');
   const historicoLogs = document.getElementById('historicoLogs');
   const filtroStatus = document.getElementById('filtroStatus');
   const buscaNF = document.getElementById('buscaNF');
 
-  
+  // Campos do formulário
   const numeroNF = document.getElementById('numeroNF');
+  const dataChegada = document.getElementById('dataChegada');
   const responsavelSetor = document.getElementById('responsavelSetor');
   const secretaria = document.getElementById('secretaria');
   const responsavelSecretaria = document.getElementById('responsavelSecretaria');
   const valor = document.getElementById('valor');
-  const nafGlobal = document.getElementById('nafGlobal'); 
+  const nafGlobal = document.getElementById('nafGlobal');
   const statusNF = document.getElementById('statusNF');
   const observacoes = document.getElementById('observacoes');
 
-const API_URL = '/notas';
-  let notasCache = []; 
+  const API_URL = '/notas';
+  let notasCache = [];
 
-  
+  // --- Funções de API ---
 
   async function carregarNotas() {
     try {
@@ -237,65 +247,67 @@ const API_URL = '/notas';
       body: JSON.stringify(nota)
     });
 
-    carregarNotas(); 
+    carregarNotas();
   }
 
   async function excluirDoBanco(id) {
     if (!confirm('Tem certeza que deseja excluir esta nota?')) return;
-    
     await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
     carregarNotas();
   }
 
+  // --- Funções Auxiliares ---
 
+  function formatarDataSimples(dataString) {
+    if(!dataString) return '-';
+    const data = new Date(dataString);
+    return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+  }
 
-function renderizarNotas() {
-  listaNotas.innerHTML = '';
-  const statusSelecionado = filtroStatus.value;
-  const textoBusca = buscaNF.value.toLowerCase();
+  function getClassStatus(status) {
+    if (status === 'Recebida pelo TI') return 'status-recebida'; // 🟢 COR NOVA
+    if (status === 'Aguardando NAF parcial') return 'status-aguardando';
+    if (status === 'Em posse da secretaria') return 'status-posse';
+    if (status === 'Retornou com erro') return 'status-erro';
+    if (status === 'Conferida') return 'status-conferida';
+    if (status === 'Enviada para tesouraria') return 'status-contabilidade';
+    return 'status-recebida'; // Padrão caso não ache
+  }
 
-  notasCache
-          .filter(nota =>
-                  (!statusSelecionado || nota.status === statusSelecionado) &&
-                  (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca))
-          )
-          .forEach(nota => {
-            const tr = document.createElement('tr');
+  function renderizarNotas() {
+    listaNotas.innerHTML = '';
+    const statusSelecionado = filtroStatus.value;
+    const textoBusca = buscaNF.value.toLowerCase();
 
-            // --- PARTE NOVA: Transforma a linha em botão ---
-            tr.style.cursor = 'pointer'; // Faz o mouse virar mãozinha
-            tr.title = "Clique para ver o histórico e observações"; // Dica ao passar o mouse
-            tr.onclick = () => exibirHistorico(nota); // Chama a função que criamos
-            // -----------------------------------------------
+    notasCache
+            .filter(nota =>
+                    (!statusSelecionado || nota.status === statusSelecionado) &&
+                    (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca))
+            )
+            .forEach(nota => {
+              const tr = document.createElement('tr');
+              tr.style.cursor = 'pointer';
+              tr.title = "Clique para ver o histórico e observações";
+              tr.onclick = () => exibirHistorico(nota);
 
-            tr.innerHTML = `
+              tr.innerHTML = `
           <td>${nota.numeroNF}</td>
-          <td>${new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR')}</td>
+          <td>${formatarDataSimples(nota.dataChegada)}</td>
           <td>${nota.responsavelSetor || '-'}</td>
           <td>${nota.secretaria || '-'}</td>
           <td>${nota.responsavelSecretaria || '-'}</td>
           <td>${nota.valor ? parseFloat(nota.valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '-'}</td>
           <td>${nota.nafGlobal || '-'}</td>
           <td>
-            <span class="status ${getClassStatus(nota.status)}">${nota.status || 'Pendente'}</span>
+            <span class="status ${getClassStatus(nota.status)}">${nota.status || 'Recebida pelo TI'}</span>
           </td>
           <td class="acoes">
             <button onclick="event.stopPropagation(); prepararEdicao(${nota.id})">Editar</button>
             <button onclick="event.stopPropagation(); excluirDoBanco(${nota.id})" style="background:#c62828;">Excluir</button>
           </td>
         `;
-            listaNotas.appendChild(tr);
-          });
-}
-
-  function getClassStatus(status) {
-    if (status === 'Aguardando NAF parcial') return 'status-aguardando';
-    if (status === 'Em posse da secretaria') return 'status-posse';
-    if (status === 'Retornou com erro') return 'status-erro';
-    if (status === 'Conferida') return 'status-conferida';
-    if (status === 'Enviada para tesouraria') return 'status-contabilidade';
-
-    return 'status-contabilidade';
+              listaNotas.appendChild(tr);
+            });
   }
 
   function prepararEdicao(id) {
@@ -303,92 +315,89 @@ function renderizarNotas() {
     if (!nota) return;
 
     numeroNF.value = nota.numeroNF;
+    dataChegada.value = nota.dataChegada;
     responsavelSetor.value = nota.responsavelSetor;
     secretaria.value = nota.secretaria;
     responsavelSecretaria.value = nota.responsavelSecretaria;
-    valor.value = nota.valor; 
-    nafGlobal.value = nota.nafGlobal || ''; 
+    valor.value = nota.valor;
+    nafGlobal.value = nota.nafGlobal || '';
     statusNF.value = nota.status;
-    observacoes.value = nota.observacoes;
-    
-    indiceEdicao.value = id; 
+    observacoes.value = nota.observacoes; // Mostra a obs atual para editar se quiser
+
+    indiceEdicao.value = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  // --- Eventos ---
 
-form.addEventListener('submit', async function(e) {
-  e.preventDefault();
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
+    const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
+    if (!usuario) {
+      alert("É obrigatório informar o nome para registrar no histórico!");
+      return;
+    }
 
-  const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
-
-  if (!usuario) {
-    alert("É obrigatório informar o nome para registrar no histórico!");
-    return;
-  }
-
-
-  const dataHora = new Date().toLocaleString('pt-BR');
-  const novaLinhaLog = `<p style="margin: 5px 0; border-bottom: 1px dashed #eee;">
+    const dataHora = new Date().toLocaleString('pt-BR');
+    // Cria o log registrando o STATUS e a OBS daquele momento
+    const novaLinhaLog = `<p style="margin: 5px 0; border-bottom: 1px dashed #eee;">
         <strong>[${dataHora}]</strong> 👤 <b>${usuario.toUpperCase()}</b>: <br>
-        Definiu status como: <em>${statusNF.value}</em> <br>
+        Status: <strong>${statusNF.value}</strong> <br>
         Obs: ${observacoes.value || 'Sem obs'}
     </p>`;
 
+    const idEdicao = indiceEdicao.value;
+    let historicoAntigo = "";
 
-  const idEdicao = indiceEdicao.value;
-  let historicoAntigo = "";
-
-  if (idEdicao) {
-
-    const notaOriginal = notasCache.find(n => n.id == idEdicao);
-    if (notaOriginal && notaOriginal.historicoLog) {
-      historicoAntigo = notaOriginal.historicoLog;
+    if (idEdicao) {
+      const notaOriginal = notasCache.find(n => n.id == idEdicao);
+      if (notaOriginal && notaOriginal.historicoLog) {
+        historicoAntigo = notaOriginal.historicoLog;
+      }
     }
-  }
 
+    const nota = {
+      numeroNF: numeroNF.value,
+      dataChegada: dataChegada.value,
+      responsavelSetor: responsavelSetor.value,
+      secretaria: secretaria.value,
+      responsavelSecretaria: responsavelSecretaria.value,
+      valor: valor.value,
+      nafGlobal: nafGlobal.value,
+      status: statusNF.value,
+      observacoes: observacoes.value, // Salva a obs atual na capa
+      historicoLog: novaLinhaLog + historicoAntigo // Acumula no histórico eterno
+    };
 
-  const nota = {
-    numeroNF: numeroNF.value,
-    responsavelSetor: responsavelSetor.value,
-    secretaria: secretaria.value,
-    responsavelSecretaria: responsavelSecretaria.value,
-    valor: valor.value,
-    nafGlobal: nafGlobal.value,
-    status: statusNF.value,
-    observacoes: observacoes.value,
+    await salvarNoBanco(nota, idEdicao || null);
 
-    historicoLog: novaLinhaLog + historicoAntigo
-  };
-
-  await salvarNoBanco(nota, idEdicao || null);
-
-  form.reset();
-  indiceEdicao.value = '';
-});
+    form.reset();
+    indiceEdicao.value = '';
+    // Reseta o select para o padrão
+    statusNF.value = "Recebida pelo TI";
+  });
 
   filtroStatus.addEventListener('change', renderizarNotas);
   buscaNF.addEventListener('input', renderizarNotas);
 
-
   carregarNotas();
 
+  function exibirHistorico(nota) {
+    const logCompleto = nota.historicoLog ? nota.historicoLog : '<p style="color: #666; font-style: italic;">Nenhum registro de alteração detalhado ainda.</p>';
 
-function exibirHistorico(nota) {
+    const chegadaFmt = nota.dataChegada ? new Date(nota.dataChegada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informado';
+    const cadastroFmt = new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR');
 
-  const logCompleto = nota.historicoLog ? nota.historicoLog : '<p style="color: #666; font-style: italic;">Nenhum registro de alteração detalhado ainda.</p>';
-
-
-  const dataCadastro = new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR');
-
-  historicoLogs.innerHTML = `
+    historicoLogs.innerHTML = `
       <div class="log">
         <div style="font-size: 1.1em; margin-bottom: 5px; color: #0018a3;">
             <strong>Nota Fiscal nº ${nota.numeroNF}</strong>
         </div>
 
         <div style="margin-bottom: 10px; font-size: 0.9em; color: #555;">
-            <strong>Criada em:</strong> ${dataCadastro} &nbsp;|&nbsp;
+            <strong>Chegou no TI:</strong> ${chegadaFmt} <br>
+            <strong>Lançada no sistema:</strong> ${cadastroFmt} <br>
             <strong>Status Atual:</strong> <span class="status ${getClassStatus(nota.status)}">${nota.status}</span>
         </div>
 
@@ -401,9 +410,8 @@ function exibirHistorico(nota) {
       </div>
     `;
 
-
-  historicoLogs.scrollIntoView({ behavior: 'smooth' });
-}
+    historicoLogs.scrollIntoView({ behavior: 'smooth' });
+  }
 </script>
 
 </body>

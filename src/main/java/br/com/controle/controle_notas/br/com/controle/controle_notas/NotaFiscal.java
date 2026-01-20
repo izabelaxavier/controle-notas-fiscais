@@ -26,18 +26,24 @@ public class NotaFiscal {
     private Double valor;
     private String nafGlobal;
 
-    // 1. PRIMEIRA MUDANÇA: O CAMPO DA DATA
-    // (Coloquei aqui junto com os outros campos)
-    private java.time.LocalDateTime dataCadastro; // <--- NOVO CAMPO
+    // Novo campo para registrar quando o papel chegou
+    private java.time.LocalDate dataChegada;
+
+    // Data automática do sistema (auditoria)
+    private java.time.LocalDateTime dataCadastro;
 
     public NotaFiscal() {
     }
 
-    // 2. SEGUNDA MUDANÇA: O GATILHO AUTOMÁTICO
-    // (Essa função roda sozinha antes de salvar no banco)
-    @PrePersist // <--- IMPORTANTE
+    // Gatilho automático antes de salvar
+    @PrePersist
     protected void aoCriar() {
         this.dataCadastro = java.time.LocalDateTime.now();
+
+        // Se não informar status, define o padrão
+        if (this.status == null || this.status.isEmpty()) {
+            this.status = "Recebida pelo TI";
+        }
     }
 
     // --- GETTERS E SETTERS ---
@@ -72,12 +78,9 @@ public class NotaFiscal {
     public String getNafGlobal() { return nafGlobal; }
     public void setNafGlobal(String nafGlobal) { this.nafGlobal = nafGlobal; }
 
-    // 3. TERCEIRA MUDANÇA: GETTER E SETTER DA DATA
-    public java.time.LocalDateTime getDataCadastro() { // <--- NOVO GETTER
-        return dataCadastro;
-    }
+    public java.time.LocalDateTime getDataCadastro() { return dataCadastro; }
+    public void setDataCadastro(java.time.LocalDateTime dataCadastro) { this.dataCadastro = dataCadastro; }
 
-    public void setDataCadastro(java.time.LocalDateTime dataCadastro) { // <--- NOVO SETTER
-        this.dataCadastro = dataCadastro;
-    }
+    public java.time.LocalDate getDataChegada() { return dataChegada; }
+    public void setDataChegada(java.time.LocalDate dataChegada) { this.dataChegada = dataChegada; }
 }
