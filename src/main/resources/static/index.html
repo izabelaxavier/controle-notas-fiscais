@@ -13,7 +13,7 @@
       --cinza-texto: #333;
 
       /* Cores dos Status */
-      --status-recebida: #009688; /* Verde-azulado (Teal) para nota nova */
+      --status-recebida: #009688;
       --status-aguardando: #f9a825;
       --status-posse: #0288d1;
       --status-erro: #c62828;
@@ -28,7 +28,44 @@
       color: var(--cinza-texto);
     }
 
-    h1 { text-align: center; color: var(--azul-principal); }
+    h1 { text-align: center; color: var(--azul-principal); margin-bottom: 30px; }
+
+    /* --- 📊 ESTILO DO DASHBOARD --- */
+    .dashboard {
+      display: flex;
+      gap: 20px;
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+      justify-content: space-between;
+    }
+
+    /* 🟢 CLASSE NOVA: Faz o card parecer um botão clicável */
+    .clickable-card {
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .clickable-card:hover {
+      transform: translateY(-5px); /* Sobe um pouquinho */
+      box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+    }
+
+    .card {
+      flex: 1;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      border-bottom: 5px solid #ccc;
+    }
+
+    .card h3 { margin: 0; font-size: 14px; color: #666; text-transform: uppercase; }
+    .card p { margin: 10px 0 0 0; font-size: 32px; font-weight: bold; color: #333; }
+
+    .card-ti { border-color: var(--status-recebida); }
+    .card-secretaria { border-color: var(--status-posse); }
+    .card-finalizadas { border-color: var(--status-conferida); }
+    /* -------------------------------------- */
 
     form, .filtros, .historico {
       background: #fff;
@@ -103,7 +140,6 @@
       display: inline-block;
     }
 
-    /* Classes CSS para cada status */
     .status-recebida { background: var(--status-recebida); }
     .status-aguardando { background: var(--status-aguardando); }
     .status-posse { background: var(--status-posse); }
@@ -125,11 +161,28 @@
 
 <h1>Controle de Notas Fiscais - TI</h1>
 
+<div class="dashboard">
+  <div class="card card-ti clickable-card" onclick="filtrarPorAtalho('Recebida pelo TI')" title="Clique para ver notas no TI">
+    <h3>📍 No Setor TI</h3>
+    <p id="dashTI">0</p>
+  </div>
+
+  <div class="card card-secretaria clickable-card" onclick="filtrarPorAtalho('Em posse da secretaria')" title="Clique para ver notas nas Secretarias">
+    <h3>⏳ Com Secretarias</h3>
+    <p id="dashSecretaria" style="color: #0288d1;">0</p>
+  </div>
+
+  <div class="card card-finalizadas clickable-card" onclick="filtrarPorAtalho('Conferida')" title="Clique para ver notas Finalizadas">
+    <h3>✅ Finalizadas</h3>
+    <p id="dashConcluidas" style="color: #2e7d32;">0</p>
+  </div>
+</div>
 <div class="filtros">
   <label>Filtrar por status</label>
   <select id="filtroStatus">
     <option value="">Todos</option>
-    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option> <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option>
+    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
     <option value="Em posse da secretaria">Em posse da secretaria</option>
     <option value="Retornou com erro">Retornou com erro</option>
     <option value="Conferida">Conferida</option>
@@ -166,7 +219,8 @@
 
   <label>Status</label>
   <select id="statusNF">
-    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option> <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
+    <option value="Recebida pelo TI">📍 Recebida pelo TI (Entrada)</option>
+    <option value="Aguardando NAF parcial">Aguardando NAF parcial</option>
     <option value="Em posse da secretaria">Em posse da secretaria</option>
     <option value="Retornou com erro">Retornou com erro</option>
     <option value="Conferida">Conferida</option>
@@ -210,6 +264,10 @@
   const filtroStatus = document.getElementById('filtroStatus');
   const buscaNF = document.getElementById('buscaNF');
 
+  const dashTI = document.getElementById('dashTI');
+  const dashSecretaria = document.getElementById('dashSecretaria');
+  const dashConcluidas = document.getElementById('dashConcluidas');
+
   // Campos do formulário
   const numeroNF = document.getElementById('numeroNF');
   const dataChegada = document.getElementById('dataChegada');
@@ -224,13 +282,12 @@
   const API_URL = '/notas';
   let notasCache = [];
 
-  // --- Funções de API ---
-
   async function carregarNotas() {
     try {
       const response = await fetch(API_URL);
       notasCache = await response.json();
       renderizarNotas();
+      atualizarDashboard();
     } catch (error) {
       console.error("Erro ao buscar notas:", error);
       listaNotas.innerHTML = '<tr><td colspan="9">Erro ao conectar com o servidor. Verifique se o Java está rodando.</td></tr>';
@@ -256,8 +313,6 @@
     carregarNotas();
   }
 
-  // --- Funções Auxiliares ---
-
   function formatarDataSimples(dataString) {
     if(!dataString) return '-';
     const data = new Date(dataString);
@@ -265,13 +320,35 @@
   }
 
   function getClassStatus(status) {
-    if (status === 'Recebida pelo TI') return 'status-recebida'; // 🟢 COR NOVA
+    if (status === 'Recebida pelo TI') return 'status-recebida';
     if (status === 'Aguardando NAF parcial') return 'status-aguardando';
     if (status === 'Em posse da secretaria') return 'status-posse';
     if (status === 'Retornou com erro') return 'status-erro';
     if (status === 'Conferida') return 'status-conferida';
     if (status === 'Enviada para tesouraria') return 'status-contabilidade';
-    return 'status-recebida'; // Padrão caso não ache
+    return 'status-recebida';
+  }
+
+  function atualizarDashboard() {
+    const qtdTI = notasCache.filter(n => n.status === 'Recebida pelo TI').length;
+    const qtdSecretaria = notasCache.filter(n => n.status === 'Em posse da secretaria').length;
+    const qtdConcluidas = notasCache.filter(n =>
+            n.status === 'Conferida' || n.status === 'Enviada para tesouraria'
+    ).length;
+
+    dashTI.innerText = qtdTI;
+    dashSecretaria.innerText = qtdSecretaria;
+    dashConcluidas.innerText = qtdConcluidas;
+  }
+
+  // 🟢 FUNÇÃO NOVA: FILTRA AO CLICAR NO CARD
+  function filtrarPorAtalho(statusParaFiltrar) {
+    // 1. Muda o valor do select de filtro
+    filtroStatus.value = statusParaFiltrar;
+
+    // 2. Dispara o evento de "change" para o sistema entender que mudou
+    // (Isso faz a tabela atualizar sozinha como se você tivesse clicado no select)
+    filtroStatus.dispatchEvent(new Event('change'));
   }
 
   function renderizarNotas() {
@@ -280,10 +357,19 @@
     const textoBusca = buscaNF.value.toLowerCase();
 
     notasCache
-            .filter(nota =>
-                    (!statusSelecionado || nota.status === statusSelecionado) &&
-                    (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca))
-            )
+            .filter(nota => {
+              // Lógica especial para o card "Finalizadas" que agrupa dois status
+              if (statusSelecionado === 'Conferida') {
+                // Se o filtro for "Conferida", mostra também as enviadas para tesouraria
+                // para bater com o número do Card "Finalizadas"
+                const ehFinalizada = nota.status === 'Conferida' || nota.status === 'Enviada para tesouraria';
+                const passaBusca = !textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca);
+                return ehFinalizada && passaBusca;
+              }
+
+              return (!statusSelecionado || nota.status === statusSelecionado) &&
+                      (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca));
+            })
             .forEach(nota => {
               const tr = document.createElement('tr');
               tr.style.cursor = 'pointer';
@@ -322,7 +408,7 @@
     valor.value = nota.valor;
     nafGlobal.value = nota.nafGlobal || '';
     statusNF.value = nota.status;
-    observacoes.value = nota.observacoes; // Mostra a obs atual para editar se quiser
+    observacoes.value = nota.observacoes;
 
     indiceEdicao.value = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -331,12 +417,10 @@
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
 
-    // 1. REGRA DE VALIDAÇÃO INTELIGENTE 🧠
-    // Se o status for "Em posse da secretaria", OBRIGA a ter o nome de quem recebeu.
     if (statusNF.value === "Em posse da secretaria" && !responsavelSecretaria.value.trim()) {
       alert("⚠️ ATENÇÃO:\n\nPara definir o status como 'Em posse da secretaria', você precisa informar o nome do Responsável que recebeu a nota!");
-      responsavelSecretaria.focus(); // Joga o cursor lá no campo pra facilitar
-      return; // Para tudo e não salva
+      responsavelSecretaria.focus();
+      return;
     }
 
     const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
@@ -367,7 +451,7 @@
       dataChegada: dataChegada.value,
       responsavelSetor: responsavelSetor.value,
       secretaria: secretaria.value,
-      responsavelSecretaria: responsavelSecretaria.value, // Agora pode ir vazio no começo
+      responsavelSecretaria: responsavelSecretaria.value,
       valor: valor.value,
       nafGlobal: nafGlobal.value,
       status: statusNF.value,
@@ -381,6 +465,7 @@
     indiceEdicao.value = '';
     statusNF.value = "Recebida pelo TI";
   });
+
   filtroStatus.addEventListener('change', renderizarNotas);
   buscaNF.addEventListener('input', renderizarNotas);
 
