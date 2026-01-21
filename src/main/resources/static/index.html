@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>Controle de Notas Fiscais</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/148/148767.png" />
+
   <style>
     :root {
       --azul-principal: #0018a3;
@@ -28,9 +31,36 @@
       color: var(--cinza-texto);
     }
 
-    h1 { text-align: center; color: var(--azul-principal); margin-bottom: 30px; }
 
-    /* --- 📊 ESTILO DO DASHBOARD --- */
+    .header-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+
+
+      background-color: #e3f2fd;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+
+      max-width: 900px;
+      margin: 0 auto 30px auto;
+    }
+
+    .header-logo {
+      height: 60px;
+      width: auto;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--azul-principal);
+      font-size: 28px;
+    }
+
+
+
     .dashboard {
       display: flex;
       gap: 20px;
@@ -39,13 +69,12 @@
       justify-content: space-between;
     }
 
-    /* 🟢 CLASSE NOVA: Faz o card parecer um botão clicável */
     .clickable-card {
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
     }
     .clickable-card:hover {
-      transform: translateY(-5px); /* Sobe um pouquinho */
+      transform: translateY(-5px);
       box-shadow: 0 8px 15px rgba(0,0,0,0.2);
     }
 
@@ -65,7 +94,7 @@
     .card-ti { border-color: var(--status-recebida); }
     .card-secretaria { border-color: var(--status-posse); }
     .card-finalizadas { border-color: var(--status-conferida); }
-    /* -------------------------------------- */
+
 
     form, .filtros, .historico {
       background: #fff;
@@ -159,7 +188,10 @@
 </head>
 <body>
 
-<h1>Controle de Notas Fiscais - TI</h1>
+<div class="header-container">
+  <img src="/brasao.png" alt="Brasão Prefeitura" class="header-logo" onerror="this.style.display='none'">
+  <h1>Controle de Notas Fiscais - TI</h1>
+</div>
 
 <div class="dashboard">
   <div class="card card-ti clickable-card" onclick="filtrarPorAtalho('Recebida pelo TI')" title="Clique para ver notas no TI">
@@ -177,7 +209,10 @@
     <p id="dashConcluidas" style="color: #2e7d32;">0</p>
   </div>
 </div>
+
 <div class="filtros">
+  <button onclick="exportarExcel()" style="background-color: #1d6f42; margin-top: 0; margin-bottom: 15px;">📊 Baixar Relatório (Excel)</button>
+
   <label>Filtrar por status</label>
   <select id="filtroStatus">
     <option value="">Todos</option>
@@ -255,20 +290,23 @@
   <div id="historicoLogs">Selecione uma nota para ver o histórico.</div>
 </div>
 
+<footer style="text-align: center; margin-top: 50px; padding: 20px; color: #888; font-size: 12px; border-top: 1px solid #ddd;">
+  <p>Controle Interno - Setor de Tecnologia da Informação</p>
+  <p>Desenvolvido por: <b>Izabela Xavier</b></p>
+</footer>
+
 <script>
-  // --- Configurações Básicas ---
+  // Variáveis e Configurações
   const form = document.getElementById('formNF');
   const listaNotas = document.getElementById('listaNotas');
   const indiceEdicao = document.getElementById('indiceEdicao');
   const historicoLogs = document.getElementById('historicoLogs');
   const filtroStatus = document.getElementById('filtroStatus');
   const buscaNF = document.getElementById('buscaNF');
-
   const dashTI = document.getElementById('dashTI');
   const dashSecretaria = document.getElementById('dashSecretaria');
   const dashConcluidas = document.getElementById('dashConcluidas');
 
-  // Campos do formulário
   const numeroNF = document.getElementById('numeroNF');
   const dataChegada = document.getElementById('dataChegada');
   const responsavelSetor = document.getElementById('responsavelSetor');
@@ -290,7 +328,7 @@
       atualizarDashboard();
     } catch (error) {
       console.error("Erro ao buscar notas:", error);
-      listaNotas.innerHTML = '<tr><td colspan="9">Erro ao conectar com o servidor. Verifique se o Java está rodando.</td></tr>';
+      listaNotas.innerHTML = '<tr><td colspan="9">Erro ao conectar com o servidor.</td></tr>';
     }
   }
 
@@ -303,7 +341,6 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(nota)
     });
-
     carregarNotas();
   }
 
@@ -341,14 +378,32 @@
     dashConcluidas.innerText = qtdConcluidas;
   }
 
-  // 🟢 FUNÇÃO NOVA: FILTRA AO CLICAR NO CARD
   function filtrarPorAtalho(statusParaFiltrar) {
-    // 1. Muda o valor do select de filtro
     filtroStatus.value = statusParaFiltrar;
-
-    // 2. Dispara o evento de "change" para o sistema entender que mudou
-    // (Isso faz a tabela atualizar sozinha como se você tivesse clicado no select)
     filtroStatus.dispatchEvent(new Event('change'));
+  }
+
+  function exportarExcel() {
+    let csvContent = "data:text/csv;charset=utf-8,NF;Chegada;Setor;Secretaria;Resp. Secretaria;Valor;Status;Observacoes\n";
+    notasCache.forEach(nota => {
+      const n = nota.numeroNF || "";
+      const c = nota.dataChegada || "";
+      const s = nota.responsavelSetor || "";
+      const sec = nota.secretaria || "";
+      const r = nota.responsavelSecretaria || "";
+      const v = nota.valor || "";
+      const st = nota.status || "";
+      const obs = (nota.observacoes || "").replace(/(\r\n|\n|\r)/gm, " ");
+      let row = `${n};${c};${s};${sec};${r};${v};${st};${obs}`;
+      csvContent += row + "\n";
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "relatorio_notas.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function renderizarNotas() {
@@ -358,15 +413,11 @@
 
     notasCache
             .filter(nota => {
-              // Lógica especial para o card "Finalizadas" que agrupa dois status
               if (statusSelecionado === 'Conferida') {
-                // Se o filtro for "Conferida", mostra também as enviadas para tesouraria
-                // para bater com o número do Card "Finalizadas"
                 const ehFinalizada = nota.status === 'Conferida' || nota.status === 'Enviada para tesouraria';
                 const passaBusca = !textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca);
                 return ehFinalizada && passaBusca;
               }
-
               return (!statusSelecionado || nota.status === statusSelecionado) &&
                       (!textoBusca || nota.numeroNF.toLowerCase().includes(textoBusca));
             })
@@ -399,7 +450,6 @@
   function prepararEdicao(id) {
     const nota = notasCache.find(n => n.id === id);
     if (!nota) return;
-
     numeroNF.value = nota.numeroNF;
     dataChegada.value = nota.dataChegada;
     responsavelSetor.value = nota.responsavelSetor;
@@ -409,26 +459,22 @@
     nafGlobal.value = nota.nafGlobal || '';
     statusNF.value = nota.status;
     observacoes.value = nota.observacoes;
-
     indiceEdicao.value = id;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   form.addEventListener('submit', async function(e) {
     e.preventDefault();
-
     if (statusNF.value === "Em posse da secretaria" && !responsavelSecretaria.value.trim()) {
       alert("⚠️ ATENÇÃO:\n\nPara definir o status como 'Em posse da secretaria', você precisa informar o nome do Responsável que recebeu a nota!");
       responsavelSecretaria.focus();
       return;
     }
-
     const usuario = prompt("Para salvar, digite seu nome (para o histórico):");
     if (!usuario) {
       alert("É obrigatório informar o nome para registrar no histórico!");
       return;
     }
-
     const dataHora = new Date().toLocaleString('pt-BR');
     const novaLinhaLog = `<p style="margin: 5px 0; border-bottom: 1px dashed #eee;">
         <strong>[${dataHora}]</strong> 👤 <b>${usuario.toUpperCase()}</b>: <br>
@@ -438,7 +484,6 @@
 
     const idEdicao = indiceEdicao.value;
     let historicoAntigo = "";
-
     if (idEdicao) {
       const notaOriginal = notasCache.find(n => n.id == idEdicao);
       if (notaOriginal && notaOriginal.historicoLog) {
@@ -460,7 +505,6 @@
     };
 
     await salvarNoBanco(nota, idEdicao || null);
-
     form.reset();
     indiceEdicao.value = '';
     statusNF.value = "Recebida pelo TI";
@@ -468,12 +512,10 @@
 
   filtroStatus.addEventListener('change', renderizarNotas);
   buscaNF.addEventListener('input', renderizarNotas);
-
   carregarNotas();
 
   function exibirHistorico(nota) {
     const logCompleto = nota.historicoLog ? nota.historicoLog : '<p style="color: #666; font-style: italic;">Nenhum registro de alteração detalhado ainda.</p>';
-
     const chegadaFmt = nota.dataChegada ? new Date(nota.dataChegada).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Não informado';
     const cadastroFmt = new Date(nota.dataCadastro || Date.now()).toLocaleDateString('pt-BR');
 
@@ -482,25 +524,20 @@
         <div style="font-size: 1.1em; margin-bottom: 5px; color: #0018a3;">
             <strong>Nota Fiscal nº ${nota.numeroNF}</strong>
         </div>
-
         <div style="margin-bottom: 10px; font-size: 0.9em; color: #555;">
             <strong>Chegou no TI:</strong> ${chegadaFmt} <br>
             <strong>Lançada no sistema:</strong> ${cadastroFmt} <br>
             <strong>Status Atual:</strong> <span class="status ${getClassStatus(nota.status)}">${nota.status}</span>
         </div>
-
         <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ccc;">
-
         <strong>📜 Linha do Tempo (Quem fez o quê):</strong> <br>
         <div style="background: #fdfdfd; padding: 10px; border-radius: 5px; margin-top: 5px; border: 1px solid #ddd; max-height: 250px; overflow-y: auto;">
             ${logCompleto}
         </div>
       </div>
     `;
-
     historicoLogs.scrollIntoView({ behavior: 'smooth' });
   }
 </script>
-
 </body>
 </html>

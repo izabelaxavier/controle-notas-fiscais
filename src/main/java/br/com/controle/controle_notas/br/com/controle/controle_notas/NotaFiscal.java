@@ -26,27 +26,27 @@ public class NotaFiscal {
     private Double valor;
     private String nafGlobal;
 
-    // Novo campo para registrar quando o papel chegou
+
     private java.time.LocalDate dataChegada;
 
-    // Data automática do sistema (auditoria)
+
     private java.time.LocalDateTime dataCadastro;
 
     public NotaFiscal() {
     }
 
-    // Gatilho automático antes de salvar
+
     @PrePersist
     protected void aoCriar() {
         this.dataCadastro = java.time.LocalDateTime.now();
 
-        // Se não informar status, define o padrão
+
         if (this.status == null || this.status.isEmpty()) {
             this.status = "Recebida pelo TI";
         }
     }
 
-    // --- GETTERS E SETTERS ---
+
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
